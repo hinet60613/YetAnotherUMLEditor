@@ -12,6 +12,9 @@ class GUIMain(Frame):
     def onObjectClick(event):
         print 'Got object click', event.x, event.y, event.widget
 
+    def onTokenClick(event):
+        print 'onTokenClick', event.x, event.y, event.widget
+
     def onTokenButtonPress(self, event):
         print 'onTokenButtonPress', event.x, event.y, event.widget
         self._drag_data["item"] = self.canvas.find_closest(event.x, event.y)[0]
@@ -37,6 +40,22 @@ class GUIMain(Frame):
         self.canvas.create_rectangle(x, y, x+20, y+20, fill=fill, outline=outline, tags="token")
 
     def createWidgets(self):
+        self.menubar = Menu(self)
+        self.master.config(menu=self.menubar)
+
+        self.fileMenubar = Menu(self.menubar, tearoff=0)
+        self.fileMenubar.add_command(label="New")
+        self.fileMenubar.add_command(label="Open")
+        self.fileMenubar.add_command(label="Save")
+        self.fileMenubar.add_command(label="Save As...")
+        self.menubar.add_cascade(label="File", menu=self.fileMenubar)
+
+        self.editMenubar = Menu(self.menubar, tearoff=0)
+        self.editMenubar.add_command(label="Group")
+        self.editMenubar.add_command(label="Ungroup")
+        self.editMenubar.add_command(label="Rename")
+        self.menubar.add_cascade(label="Edit", menu=self.editMenubar)
+
         self.select = Button(self)
         self.select["text"] = "Select"
         self.select["width"] = 15
@@ -70,6 +89,7 @@ class GUIMain(Frame):
         self._create_token((70, 40), fill="red")
         self._create_token((90, 60), fill="green")
 
+        self.canvas.tag_bind('token', '<Button-1>', self.onTokenClick)
         self.canvas.tag_bind('token', '<ButtonPress-1>', self.onTokenButtonPress)
         self.canvas.tag_bind('token', '<ButtonRelease-1>', self.onTokenButtonRelease)
         self.canvas.tag_bind('token', '<B1-Motion>', self.onTokenMotion)
