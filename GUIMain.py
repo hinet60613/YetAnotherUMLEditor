@@ -1,27 +1,74 @@
 from Tkinter import *
 
+# TODO Connection between focus point
+# TODO Unselect object
+# TODO Group objects
+# TODO Ungroup objects
+# TODO Redraw all objects connected to moved object
+# TODO Change object name
+
+
+class Line:
+    def __init__(self, canvas, start_object, end_object, arrow=LAST):
+        self.canvas = canvas
+        self._start_object = start_object
+        self._end_object = end_object
+        self.arrow = arrow
+        self.draw()
+
+    def draw(self):
+        if hasattr(self, 'item') and type(self.item) != None:
+            self.canvas.delete(self.item)
+        self._start_object.update_coords()
+        self._end_object.update_coords()
+        (start_x, start_y) = self._start_object._center
+        (end_x, end_y) = self._end_object._center
+        self.item = self.canvas.create_line(
+                start_x, start_y,
+                end_x, end_y,
+                arrowshape=(8, 10, 3),
+                arrow=self.arrow,
+                tags="line"
+            )
+
+
+class UmlObject:
+    def __init__(self, canvas, widget):
+        self.canvas = canvas
+        self.widget = widget
+        self.update_coords()
+
+    def update_coords(self):
+        bound = self.canvas.bbox(self.widget)
+        self._center = ((bound[2]+bound[0])/2, (bound[3]+bound[1])/2)
+        self._top = ((bound[2]+bound[0])/2, bound[3])
+        self._bottom = ((bound[2]+bound[0])/2, bound[1])
+        self._left = (bound[0], (bound[1]+bound[3])/2)
+        self._right = (bound[2], (bound[1]+bound[3])/2)
+
+
 class GUIMain(Frame):
     def __init__(self, master=None):
         Frame.__init__(self, master)
         self.grid()
-        self.createWidgets()
+        self.create_widgets()
         self.mode = None
 
-    def selectMode(self):
+    def select_mode(self):
         print 'SELECT mode'
         self.mode = None
 
-    def createAssociationLine(self):
+    def create_association_line(self):
         print 'LINE mode'
         self.mode = "line"
 
-    def onCanvasClick(self, event):
+    def on_canvas_click(self, event):
         print 'onCanvasClick', event.x, event.y, event.widget
         self.mode = None
 
-    def _add_focus_point(self, selectedItem):
+    def _add_focus_point(self, selected_item):
         self.canvas.delete("focusPoint")
-        bound = self.canvas.bbox(selectedItem)
+        bound = self.canvas.bbox(selected_item)
         width = bound[2] - bound[0]
         height = bound[3] - bound[1]
         top = (bound[0] + width/2 - 3, bound[3])
@@ -33,7 +80,7 @@ class GUIMain(Frame):
         self._create_token(left, fill="black", tags="focusPoint", length=6)
         self._create_token(right, fill="black", tags="focusPoint", length=6)
 
-    def onTokenButtonPress(self, event):
+    def on_token_button_press(self, event):
         print 'onTokenButtonPress', event.x, event.y, event.widget
         find_closest_list = self.canvas.find_closest(event.x, event.y)
         self._drag_data["item"] = find_closest_list[0]
@@ -49,8 +96,7 @@ class GUIMain(Frame):
                     self._drag_data["y"] = (bound[3] + bound[1])/2
                     break
 
-
-    def onTokenButtonRelease(self, event):
+    def on_token_button_release(self, event):
         print 'onTokenButtonRelease', event.x, event.y, event.widget
         if self.mode == "line":
             closest_item = self.canvas.find_closest(event.x, event.y)[0]
@@ -73,8 +119,10 @@ class GUIMain(Frame):
         self._drag_data["item"] = None
         self._drag_data["x"] = 0
         self._drag_data["y"] = 0
+        for i in self.uml_line_list:
+            i.draw()
 
-    def onTokenMotion(self, event):
+    def on_token_motion(self, event):
         print 'onTokenMotion', event.x, event.y, event.widget
         delta_x = event.x - self._drag_data["x"]
         delta_y = event.y - self._drag_data["y"]
@@ -88,7 +136,7 @@ class GUIMain(Frame):
 
     def _create_token(self, coord, length=100, fill="black", outline="#000000", tags="token"):
         (x, y) = coord
-        self.canvas.create_rectangle(
+        return self.canvas.create_rectangle(
             x, y,
             x+length, y+length,
             fill=fill,
@@ -98,7 +146,7 @@ class GUIMain(Frame):
 
     def _create_circle_token(self, coord, length=100, fill="black", outline="#000000", tags="token"):
         (x, y) = coord
-        self.canvas.create_oval(
+        return self.canvas.create_oval(
             x, y,
             x+length, y+length,
             fill=fill,
@@ -106,7 +154,7 @@ class GUIMain(Frame):
             tags=tags
         )
 
-    def createWidgets(self):
+    def create_widgets(self):
         self.menubar = Menu(self)
         self.master.config(menu=self.menubar)
 
@@ -123,11 +171,11 @@ class GUIMain(Frame):
         self.editMenubar.add_command(label="Rename")
         self.menubar.add_cascade(label="Edit", menu=self.editMenubar)
 
-        self.select = Button(self, command=self.selectMode)
+        self.select = Button(self, command=self.select_mode)
         self.select["text"] = "Select"
         self.select["width"] = 15
         self.select.grid(row=0, column=0)
-        self.associationLine = Button(self, command=self.createAssociationLine)
+        self.associationLine = Button(self, command=self.create_association_line)
         self.associationLine["text"] = "Association Line"
         self.associationLine["width"] = 15
         self.associationLine.grid(row=1, column=0)
@@ -152,14 +200,29 @@ class GUIMain(Frame):
         self.canvas = Canvas(self, width=800, height=600)
         self.canvas.pack(fill='both', expand=True)
         self.canvas.grid(row=0, column=1, columnspan=7, rowspan=6)
-        self._create_token((10, 10), fill="yellow")
-        self._create_token((110, 110), fill="red")
-        self._create_token((210, 210), fill="green")
-        self._create_circle_token((310, 310), fill="blue")
 
-        self.canvas.tag_bind('token', '<ButtonPress-1>', self.onTokenButtonPress)
-        self.canvas.tag_bind('token', '<ButtonRelease-1>', self.onTokenButtonRelease)
-        self.canvas.tag_bind('token', '<B1-Motion>', self.onTokenMotion)
+        self.uml_object_list = []
+        self.uml_line_list = []
+        token_01 = UmlObject(self.canvas, self._create_token((10, 10), fill="yellow"))
+        token_02 = UmlObject(self.canvas, self._create_token((110, 110), fill="red"))
+        token_03 = UmlObject(self.canvas, self._create_token((210, 210), fill="green"))
+        token_04 = UmlObject(self.canvas, self._create_circle_token((310, 310), fill="blue"))
+        line_01 = Line(self.canvas, token_01, token_02)
+        line_02 = Line(self.canvas, token_02, token_03)
+        line_03 = Line(self.canvas, token_03, token_04)
+        line_04 = Line(self.canvas, token_04, token_01)
+        self.uml_object_list.append(token_01)
+        self.uml_object_list.append(token_02)
+        self.uml_object_list.append(token_03)
+        self.uml_object_list.append(token_04)
+        self.uml_line_list.append(line_01)
+        self.uml_line_list.append(line_02)
+        self.uml_line_list.append(line_03)
+        self.uml_line_list.append(line_04)
+
+        self.canvas.tag_bind('token', '<ButtonPress-1>', self.on_token_button_press)
+        self.canvas.tag_bind('token', '<ButtonRelease-1>', self.on_token_button_release)
+        self.canvas.tag_bind('token', '<B1-Motion>', self.on_token_motion)
 
 if __name__ == '__main__':
     root = Tk()
