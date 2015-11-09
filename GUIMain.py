@@ -1,32 +1,53 @@
 from Tkinter import *
 
-# TODO Connection between focus point
 # TODO Unselect object
 # TODO Group objects
 # TODO Ungroup objects
-# TODO Redraw all objects connected to moved object
 # TODO Change object name
 
 
+def enum(**enums):
+    return type('Enum', (), enums)
+
+
+class Port:
+    def __init__(self, uml_object, coord):
+        self.uml_object = uml_object
+        self._coord = coord
+
+    def get_coord(self):
+        return self._coord
+
+    def set_coord(self, coord):
+        self._coord = coord
+
+    def update_coord(self):
+        self.uml_object.update_coords()
+
+
 class Line:
-    def __init__(self, canvas, start_object, end_object, arrow=LAST):
+    def __init__(self, canvas,
+                 start_port, end_port,
+                 arrow=NONE, arrow_shape=(8, 10, 3)):
+        self.item = None
         self.canvas = canvas
-        self._start_object = start_object
-        self._end_object = end_object
+        self.start_port = start_port
+        self.end_port = end_port
         self.arrow = arrow
+        self.arrow_shape = arrow_shape
         self.draw()
 
     def draw(self):
-        if hasattr(self, 'item') and type(self.item) != None:
+        if hasattr(self, 'item') and type(self.item) is not None:
             self.canvas.delete(self.item)
-        self._start_object.update_coords()
-        self._end_object.update_coords()
-        (start_x, start_y) = self._start_object._center
-        (end_x, end_y) = self._end_object._center
+        self.start_port.update_coord()
+        self.end_port.update_coord()
+        (start_x, start_y) = self.start_port.get_coord()
+        (end_x, end_y) = self.end_port.get_coord()
         self.item = self.canvas.create_line(
                 start_x, start_y,
                 end_x, end_y,
-                arrowshape=(8, 10, 3),
+                arrowshape=self.arrow_shape,
                 arrow=self.arrow,
                 tags="line"
             )
@@ -34,25 +55,38 @@ class Line:
 
 class UmlObject:
     def __init__(self, canvas, widget):
+        self._center = self._top = self._bottom = self._left = self._right = None
+        self.focus_point = []
         self.canvas = canvas
         self.widget = widget
-        self.update_coords()
+        self.create_ports()
+
+    def create_ports(self):
+        bound = self.canvas.bbox(self.widget)
+        self._center = Port(self, ((bound[2]+bound[0])/2, (bound[3]+bound[1])/2))
+        self._top = Port(self, ((bound[2]+bound[0])/2, bound[1]))
+        self._bottom = Port(self, ((bound[2]+bound[0])/2, bound[3]))
+        self._left = Port(self, (bound[0], (bound[1]+bound[3])/2))
+        self._right = Port(self, (bound[2], (bound[1]+bound[3])/2))
 
     def update_coords(self):
         bound = self.canvas.bbox(self.widget)
-        self._center = ((bound[2]+bound[0])/2, (bound[3]+bound[1])/2)
-        self._top = ((bound[2]+bound[0])/2, bound[3])
-        self._bottom = ((bound[2]+bound[0])/2, bound[1])
-        self._left = (bound[0], (bound[1]+bound[3])/2)
-        self._right = (bound[2], (bound[1]+bound[3])/2)
+        self._center.set_coord(((bound[2]+bound[0])/2, (bound[3]+bound[1])/2))
+        self._top.set_coord(((bound[2]+bound[0])/2, bound[1]))
+        self._bottom.set_coord(((bound[2]+bound[0])/2, bound[3]))
+        self._left.set_coord((bound[0], (bound[1]+bound[3])/2))
+        self._right.set_coord((bound[2], (bound[1]+bound[3])/2))
 
 
 class GUIMain(Frame):
     def __init__(self, master=None):
+        self.uml_object_list = []
+        self.uml_line_list = []
         Frame.__init__(self, master)
         self.grid()
         self.create_widgets()
         self.mode = None
+        self.arrow_type = NONE
 
     def select_mode(self):
         print 'SELECT mode'
@@ -61,6 +95,12 @@ class GUIMain(Frame):
     def create_association_line(self):
         print 'LINE mode'
         self.mode = "line"
+        self.arrow_type = NONE
+
+    def create_generalization_line(self):
+        print 'LINE mode'
+        self.mode = "line"
+        self.arrow_type = LAST
 
     def on_canvas_click(self, event):
         print 'onCanvasClick', event.x, event.y, event.widget
@@ -133,6 +173,8 @@ class GUIMain(Frame):
             self.canvas.move(self._drag_data["item"], delta_x, delta_y)
             self._drag_data["x"] = event.x
             self._drag_data["y"] = event.y
+            for i in self.uml_line_list:
+                i.draw()
 
     def _create_token(self, coord, length=100, fill="black", outline="#000000", tags="token"):
         (x, y) = coord
@@ -201,16 +243,14 @@ class GUIMain(Frame):
         self.canvas.pack(fill='both', expand=True)
         self.canvas.grid(row=0, column=1, columnspan=7, rowspan=6)
 
-        self.uml_object_list = []
-        self.uml_line_list = []
         token_01 = UmlObject(self.canvas, self._create_token((10, 10), fill="yellow"))
         token_02 = UmlObject(self.canvas, self._create_token((110, 110), fill="red"))
         token_03 = UmlObject(self.canvas, self._create_token((210, 210), fill="green"))
         token_04 = UmlObject(self.canvas, self._create_circle_token((310, 310), fill="blue"))
-        line_01 = Line(self.canvas, token_01, token_02)
-        line_02 = Line(self.canvas, token_02, token_03)
-        line_03 = Line(self.canvas, token_03, token_04)
-        line_04 = Line(self.canvas, token_04, token_01)
+        line_01 = Line(self.canvas, token_01._bottom, token_02._left)
+        line_02 = Line(self.canvas, token_02._bottom, token_03._left, arrow_shape=(16, 8, 6), arrow=LAST)
+        line_03 = Line(self.canvas, token_03._bottom, token_04._left)
+        line_04 = Line(self.canvas, token_04._bottom, token_01._left)
         self.uml_object_list.append(token_01)
         self.uml_object_list.append(token_02)
         self.uml_object_list.append(token_03)
