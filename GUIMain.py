@@ -1,4 +1,5 @@
 from Tkinter import *
+import math
 
 # TODO Unselect object
 # TODO Group objects
@@ -9,6 +10,11 @@ from Tkinter import *
 def enum(**enums):
     return type('Enum', (), enums)
 
+
+def dist(coord1, coord2):
+    (x1, y1) = coord1
+    (x2, y2) = coord2
+    return math.sqrt((x1-x2)**2 + (y1-y2)**2)
 
 class Port:
     def __init__(self, uml_object, coord):
@@ -70,6 +76,7 @@ class UmlObject:
         self._bottom = Port(self, ((bound[2]+bound[0])/2, bound[3]))
         self._left = Port(self, (bound[0], (bound[1]+bound[3])/2))
         self._right = Port(self, (bound[2], (bound[1]+bound[3])/2))
+        self.focus_point = [self._center, self._top, self._bottom, self._left, self._right]
 
     def update_coords(self):
         bound = self.canvas.bbox(self.widget)
@@ -80,7 +87,14 @@ class UmlObject:
         self._right.set_coord((bound[2], (bound[1]+bound[3])/2))
 
     def get_nearest_port(self, coord):
-        return self._top
+        nearest_port = self._center
+        nearest_dist = dist(self._center.get_coord(), coord)
+        for port in self.focus_point:
+            tmp_dist = dist(port.get_coord(), coord)
+            if tmp_dist < nearest_dist:
+                nearest_dist = tmp_dist
+                nearest_port = port
+        return nearest_port
 
 
 class GUIMain(Frame):
@@ -132,9 +146,11 @@ class GUIMain(Frame):
     def on_token_button_press(self, event):
         print 'onTokenButtonPress', event.x, event.y, event.widget
         find_closest_list = self.canvas.find_closest(event.x, event.y)
+        closest_uml = self.uml_pair[find_closest_list[0]]
         self._drag_data["item"] = find_closest_list[0]
         self._drag_data["x"] = event.x
         self._drag_data["y"] = event.y
+        self._drag_data["start_port"] = closest_uml.get_nearest_port((event.x, event.y))
         self._add_focus_point(self._drag_data["item"])
         if self.mode == "line":
             for i in range(len(find_closest_list)):
@@ -149,7 +165,7 @@ class GUIMain(Frame):
         print 'onTokenButtonRelease', event.x, event.y, event.widget
         if self.mode == "line":
             closest_item = self.canvas.find_closest(event.x, event.y)[0]
-            start_port = self.uml_pair[self._drag_data['item']]._center
+            start_port = self._drag_data["start_port"]
             end_port = self.uml_pair[closest_item].get_nearest_port((event.x, event.y))
             self.uml_line_list.append(Line(self.canvas, start_port, end_port))
         self._drag_data["item"] = None
