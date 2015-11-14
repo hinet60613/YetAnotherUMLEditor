@@ -16,6 +16,7 @@ def dist(coord1, coord2):
     (x2, y2) = coord2
     return math.sqrt((x1-x2)**2 + (y1-y2)**2)
 
+
 class Port:
     def __init__(self, uml_object, coord):
         self.uml_object = uml_object
@@ -106,7 +107,8 @@ class GUIMain(Frame):
         self.grid()
         self.create_widgets()
         self.mode = None
-        self.arrow_type = NONE
+        self.arrow = NONE
+        self.arrow_shape = None
 
     def select_mode(self):
         print 'SELECT mode'
@@ -115,12 +117,18 @@ class GUIMain(Frame):
     def create_association_line(self):
         print 'LINE mode'
         self.mode = "line"
-        self.arrow_type = NONE
+        self.arrow = NONE
 
     def create_generalization_line(self):
         print 'LINE mode'
         self.mode = "line"
-        self.arrow_type = LAST
+        self.arrow = LAST
+
+    def create_composition_line(self):
+        print 'LINE mode'
+        self.mode = "line"
+        self.arrow = LAST
+        self.arrow_shape = (16, 8, 6)
 
     def on_background_click(self, event):
         self.canvas.delete('focusPoint')
@@ -167,7 +175,14 @@ class GUIMain(Frame):
             closest_item = self.canvas.find_closest(event.x, event.y)[0]
             start_port = self._drag_data["start_port"]
             end_port = self.uml_pair[closest_item].get_nearest_port((event.x, event.y))
-            self.uml_line_list.append(Line(self.canvas, start_port, end_port))
+            self.uml_line_list.append(
+                Line(
+                    self.canvas,
+                    start_port, end_port,
+                    arrow=self.arrow,
+                    arrow_shape=self.arrow_shape
+                )
+            )
         self._drag_data["item"] = None
         self._drag_data["x"] = 0
         self._drag_data["y"] = 0
@@ -233,11 +248,11 @@ class GUIMain(Frame):
         self.associationLine["text"] = "Association Line"
         self.associationLine["width"] = 15
         self.associationLine.grid(row=1, column=0)
-        self.generalizationLine = Button(self)
+        self.generalizationLine = Button(self, command=self.create_generalization_line)
         self.generalizationLine["text"] = "Generalization Line"
         self.generalizationLine["width"] = 15
         self.generalizationLine.grid(row=2, column=0)
-        self.compositionLine = Button(self)
+        self.compositionLine = Button(self, command=self.create_composition_line)
         self.compositionLine["text"] = "Composition Line"
         self.compositionLine["width"] = 15
         self.compositionLine.grid(row=3, column=0)
