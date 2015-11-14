@@ -54,11 +54,13 @@ class Line:
 
 
 class UmlObject:
-    def __init__(self, canvas, widget):
+    def __init__(self, canvas, widget, uml_pair):
         self._center = self._top = self._bottom = self._left = self._right = None
         self.focus_point = []
         self.canvas = canvas
         self.widget = widget
+        self.uml_pair = uml_pair
+        self.uml_pair[self.widget] = self
         self.create_ports()
 
     def create_ports(self):
@@ -77,11 +79,15 @@ class UmlObject:
         self._left.set_coord((bound[0], (bound[1]+bound[3])/2))
         self._right.set_coord((bound[2], (bound[1]+bound[3])/2))
 
+    def get_nearest_port(self, coord):
+        return self._top
+
 
 class GUIMain(Frame):
     def __init__(self, master=None):
         self.uml_object_list = []
         self.uml_line_list = []
+        self.uml_pair = {}
         Frame.__init__(self, master)
         self.grid()
         self.create_widgets()
@@ -143,22 +149,9 @@ class GUIMain(Frame):
         print 'onTokenButtonRelease', event.x, event.y, event.widget
         if self.mode == "line":
             closest_item = self.canvas.find_closest(event.x, event.y)[0]
-            bound = self.canvas.bbox(closest_item)
-            (end_point_x, end_point_y) = ((bound[2] + bound[0])/2, (bound[3] + bound[1])/2)
-            print 'LINE: (%d, %d) to (%d, %d)' % (
-                self._drag_data["x"],
-                self._drag_data["y"],
-                end_point_x,
-                end_point_y)
-            self.canvas.create_line(
-                self._drag_data["x"], 
-                self._drag_data["y"],
-                end_point_x,
-                end_point_y,
-                arrowshape=(8, 10, 3),
-                arrow=LAST,
-                tags="arrow"
-            )
+            start_port = self.uml_pair[self._drag_data['item']]._center
+            end_port = self.uml_pair[closest_item].get_nearest_port((event.x, event.y))
+            self.uml_line_list.append(Line(self.canvas, start_port, end_port))
         self._drag_data["item"] = None
         self._drag_data["x"] = 0
         self._drag_data["y"] = 0
@@ -248,10 +241,10 @@ class GUIMain(Frame):
 
         self.canvas.create_rectangle(0, 0, 800, 600, fill='#FFF', outline='#FFF', tags='background')
 
-        token_01 = UmlObject(self.canvas, self._create_token((10, 10), fill="yellow"))
-        token_02 = UmlObject(self.canvas, self._create_token((110, 110), fill="red"))
-        token_03 = UmlObject(self.canvas, self._create_token((210, 210), fill="green"))
-        token_04 = UmlObject(self.canvas, self._create_circle_token((310, 310), fill="blue"))
+        token_01 = UmlObject(self.canvas, self._create_token((10, 10), fill="yellow"), self.uml_pair)
+        token_02 = UmlObject(self.canvas, self._create_token((110, 110), fill="red"), self.uml_pair)
+        token_03 = UmlObject(self.canvas, self._create_token((210, 210), fill="green"), self.uml_pair)
+        token_04 = UmlObject(self.canvas, self._create_circle_token((310, 310), fill="blue"), self.uml_pair)
         line_01 = Line(self.canvas, token_01._bottom, token_02._left)
         line_02 = Line(self.canvas, token_02._bottom, token_03._left, arrow_shape=(16, 8, 6), arrow=LAST)
         line_03 = Line(self.canvas, token_03._bottom, token_04._left)
