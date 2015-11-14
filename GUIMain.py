@@ -102,6 +102,9 @@ class GUIMain(Frame):
         self.mode = "line"
         self.arrow_type = LAST
 
+    def on_background_click(self, event):
+        self.canvas.delete('focusPoint')
+
     def on_canvas_click(self, event):
         print 'onCanvasClick', event.x, event.y, event.widget
         self.mode = None
@@ -243,6 +246,8 @@ class GUIMain(Frame):
         self.canvas.pack(fill='both', expand=True)
         self.canvas.grid(row=0, column=1, columnspan=7, rowspan=6)
 
+        self.canvas.create_rectangle(0, 0, 800, 600, fill='#FFF', outline='#FFF', tags='background')
+
         token_01 = UmlObject(self.canvas, self._create_token((10, 10), fill="yellow"))
         token_02 = UmlObject(self.canvas, self._create_token((110, 110), fill="red"))
         token_03 = UmlObject(self.canvas, self._create_token((210, 210), fill="green"))
@@ -263,6 +268,7 @@ class GUIMain(Frame):
         self.canvas.tag_bind('token', '<ButtonPress-1>', self.on_token_button_press)
         self.canvas.tag_bind('token', '<ButtonRelease-1>', self.on_token_button_release)
         self.canvas.tag_bind('token', '<B1-Motion>', self.on_token_motion)
+        self.canvas.tag_bind('background', '<Button-1>', )
 
 if __name__ == '__main__':
     root = Tk()
