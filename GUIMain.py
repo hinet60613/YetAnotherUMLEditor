@@ -109,29 +109,62 @@ class GUIMain(Frame):
         self.mode = None
         self.arrow = NONE
         self.arrow_shape = None
+        self.shape = None
+
+    def reset_all_button(self):
+        self.select.config(relief=RAISED, background='#F0F0F0', foreground='black')
+        self.generalizationLine.config(relief=RAISED, background='#F0F0F0', foreground='black')
+        self.compositionLine.config(relief=RAISED, background='#F0F0F0', foreground='black')
+        self.associationLine.config(relief=RAISED, background='#F0F0F0', foreground='black')
+        self.classGraph.config(relief=RAISED, background='#F0F0F0', foreground='black')
+        self.useCase.config(relief=RAISED, background='#F0F0F0', foreground='black')
 
     def select_mode(self):
         print 'SELECT mode'
         self.mode = None
+        self.reset_all_button()
+        self.select.config(relief=SUNKEN, background='black', foreground='white')
+
+    def create_class(self):
+        print 'OBJECT mode'
+        self.mode = 'object'
+        self.shape = 'rectangle'
+        self.reset_all_button()
+        self.classGraph.config(relief=SUNKEN, background='black', foreground='white')
+
+    def create_use_case(self):
+        print 'OBJECT mode'
+        self.mode = 'object'
+        self.shape = "circle"
+        self.reset_all_button()
+        self.useCase.config(relief=SUNKEN, background='black', foreground='white')
 
     def create_association_line(self):
         print 'LINE mode'
         self.mode = "line"
         self.arrow = NONE
+        self.reset_all_button()
+        self.associationLine.config(relief=SUNKEN, background='black', foreground='white')
 
     def create_generalization_line(self):
         print 'LINE mode'
         self.mode = "line"
         self.arrow = LAST
+        self.reset_all_button()
+        self.generalizationLine.config(relief=SUNKEN, background='black', foreground='white')
 
     def create_composition_line(self):
         print 'LINE mode'
         self.mode = "line"
         self.arrow = LAST
         self.arrow_shape = (16, 8, 6)
+        self.reset_all_button()
+        self.compositionLine.config(relief=SUNKEN, background='black', foreground='white')
 
     def on_background_click(self, event):
         self.canvas.delete('focusPoint')
+        if self.mode == 'object':
+            print 'create object'
 
     def on_canvas_click(self, event):
         print 'onCanvasClick', event.x, event.y, event.widget
@@ -256,11 +289,11 @@ class GUIMain(Frame):
         self.compositionLine["text"] = "Composition Line"
         self.compositionLine["width"] = 15
         self.compositionLine.grid(row=3, column=0)
-        self.classGraph = Button(self)
+        self.classGraph = Button(self, command=self.create_class)
         self.classGraph["text"] = "Class"
         self.classGraph["width"] = 15
         self.classGraph.grid(row=4, column=0)
-        self.useCase = Button(self)
+        self.useCase = Button(self, command=self.create_use_case)
         self.useCase["text"] = "Use Case"
         self.useCase["width"] = 15
         self.useCase.grid(row=5, column=0)
@@ -276,23 +309,15 @@ class GUIMain(Frame):
         token_02 = UmlObject(self.canvas, self._create_token((110, 110), fill="red"), self.uml_pair)
         token_03 = UmlObject(self.canvas, self._create_token((210, 210), fill="green"), self.uml_pair)
         token_04 = UmlObject(self.canvas, self._create_circle_token((310, 310), fill="blue"), self.uml_pair)
-        line_01 = Line(self.canvas, token_01._bottom, token_02._left)
-        line_02 = Line(self.canvas, token_02._bottom, token_03._left, arrow_shape=(16, 8, 6), arrow=LAST)
-        line_03 = Line(self.canvas, token_03._bottom, token_04._left)
-        line_04 = Line(self.canvas, token_04._bottom, token_01._left)
         self.uml_object_list.append(token_01)
         self.uml_object_list.append(token_02)
         self.uml_object_list.append(token_03)
         self.uml_object_list.append(token_04)
-        self.uml_line_list.append(line_01)
-        self.uml_line_list.append(line_02)
-        self.uml_line_list.append(line_03)
-        self.uml_line_list.append(line_04)
 
         self.canvas.tag_bind('token', '<ButtonPress-1>', self.on_token_button_press)
         self.canvas.tag_bind('token', '<ButtonRelease-1>', self.on_token_button_release)
         self.canvas.tag_bind('token', '<B1-Motion>', self.on_token_motion)
-        self.canvas.tag_bind('background', '<Button-1>', )
+        self.canvas.tag_bind('background', '<Button-1>', self.on_background_click)
 
 if __name__ == '__main__':
     root = Tk()
