@@ -1,14 +1,9 @@
 from Tkinter import *
 import math
 
-# TODO Unselect object
 # TODO Group objects
 # TODO Ungroup objects
 # TODO Change object name
-
-
-def enum(**enums):
-    return type('Enum', (), enums)
 
 
 def dist(coord1, coord2):
@@ -163,8 +158,12 @@ class GUIMain(Frame):
 
     def on_background_click(self, event):
         self.canvas.delete('focusPoint')
+        self.focus_object = None
         if self.mode == 'object':
-            print 'create object'
+            if self.shape == 'rectangle':
+                self.uml_object_list.append(UmlObject(self.canvas, self._create_token((event.x, event.y), fill="white"), self.uml_pair))
+            elif self.shape == 'circle':
+                self.uml_object_list.append(UmlObject(self.canvas, self._create_circle_token((event.x, event.y), fill="white"), self.uml_pair))
 
     def on_canvas_click(self, event):
         print 'onCanvasClick', event.x, event.y, event.widget
@@ -188,6 +187,7 @@ class GUIMain(Frame):
         print 'onTokenButtonPress', event.x, event.y, event.widget
         find_closest_list = self.canvas.find_closest(event.x, event.y)
         closest_uml = self.uml_pair[find_closest_list[0]]
+        self.focus_object = find_closest_list[0]
         self._drag_data["item"] = find_closest_list[0]
         self._drag_data["x"] = event.x
         self._drag_data["y"] = event.y
@@ -216,6 +216,7 @@ class GUIMain(Frame):
                     arrow_shape=self.arrow_shape
                 )
             )
+
         self._drag_data["item"] = None
         self._drag_data["x"] = 0
         self._drag_data["y"] = 0
@@ -256,6 +257,12 @@ class GUIMain(Frame):
             tags=tags
         )
 
+    def object_rename(self):
+        if self.focus_object is None:
+            print "Error: no object selected"
+        else:
+            print self.uml_pair[self.focus_object]
+
     def create_widgets(self):
         self.menubar = Menu(self)
         self.master.config(menu=self.menubar)
@@ -270,7 +277,7 @@ class GUIMain(Frame):
         self.editMenubar = Menu(self.menubar, tearoff=0)
         self.editMenubar.add_command(label="Group")
         self.editMenubar.add_command(label="Ungroup")
-        self.editMenubar.add_command(label="Rename")
+        self.editMenubar.add_command(label="Rename", command=self.object_rename)
         self.menubar.add_cascade(label="Edit", menu=self.editMenubar)
 
         self.select = Button(self, command=self.select_mode)
@@ -299,20 +306,12 @@ class GUIMain(Frame):
         self.useCase.grid(row=5, column=0)
 
         self._drag_data = {"x": 0, "y": 0, "item": None}
+        self.focus_object = None
         self.canvas = Canvas(self, width=800, height=600)
         self.canvas.pack(fill='both', expand=True)
         self.canvas.grid(row=0, column=1, columnspan=7, rowspan=6)
 
-        self.canvas.create_rectangle(0, 0, 800, 600, fill='#FFF', outline='#FFF', tags='background')
-
-        token_01 = UmlObject(self.canvas, self._create_token((10, 10), fill="yellow"), self.uml_pair)
-        token_02 = UmlObject(self.canvas, self._create_token((110, 110), fill="red"), self.uml_pair)
-        token_03 = UmlObject(self.canvas, self._create_token((210, 210), fill="green"), self.uml_pair)
-        token_04 = UmlObject(self.canvas, self._create_circle_token((310, 310), fill="blue"), self.uml_pair)
-        self.uml_object_list.append(token_01)
-        self.uml_object_list.append(token_02)
-        self.uml_object_list.append(token_03)
-        self.uml_object_list.append(token_04)
+        self.canvas.create_rectangle(0, 0, 800, 600, fill='#F0F0F0', outline='#F0F0F0', tags='background')
 
         self.canvas.tag_bind('token', '<ButtonPress-1>', self.on_token_button_press)
         self.canvas.tag_bind('token', '<ButtonRelease-1>', self.on_token_button_release)
