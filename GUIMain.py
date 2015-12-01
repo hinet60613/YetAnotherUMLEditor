@@ -72,7 +72,11 @@ class UmlObject:
         self._bottom = Port(self, ((bound[2]+bound[0])/2, bound[3]))
         self._left = Port(self, (bound[0], (bound[1]+bound[3])/2))
         self._right = Port(self, (bound[2], (bound[1]+bound[3])/2))
-        self.focus_point = [self._center, self._top, self._bottom, self._left, self._right]
+        self._topright = Port(self, (bound[2], bound[1]+(bound[3]-bound[1])/3))
+        self._topleft = Port(self, (bound[0], bound[1]+(bound[3]-bound[1])/3))
+        self._bottomright = Port(self, (bound[2], bound[3]-(bound[3]-bound[1])/3))
+        self._bottomleft = Port(self, (bound[0], bound[3]-(bound[3]-bound[1])/3))
+        self.focus_point = [self._top, self._bottom, self._left, self._right]
 
     def update_coords(self):
         bound = self.canvas.bbox(self.widget)
@@ -81,6 +85,10 @@ class UmlObject:
         self._bottom.set_coord(((bound[2]+bound[0])/2, bound[3]))
         self._left.set_coord((bound[0], (bound[1]+bound[3])/2))
         self._right.set_coord((bound[2], (bound[1]+bound[3])/2))
+        self._topright.set_coord((bound[2], bound[1]+(bound[3]-bound[1])/3))
+        self._topleft.set_coord((bound[0], bound[1]+(bound[3]-bound[1])/3))
+        self._bottomright.set_coord((bound[2], bound[3]-(bound[3]-bound[1])/3))
+        self._bottomleft.set_coord((bound[0], bound[3]-(bound[3]-bound[1])/3))
 
     def get_nearest_port(self, coord):
         nearest_port = self._center
@@ -124,6 +132,7 @@ class GUIMain(Frame):
         print 'OBJECT mode'
         self.mode = 'object'
         self.shape = 'rectangle'
+        self.arrow = NONE
         self.reset_all_button()
         self.classGraph.config(relief=SUNKEN, background='black', foreground='white')
 
@@ -161,7 +170,24 @@ class GUIMain(Frame):
         self.focus_object = None
         if self.mode == 'object':
             if self.shape == 'rectangle':
-                self.uml_object_list.append(UmlObject(self.canvas, self._create_token((event.x, event.y), fill="white"), self.uml_pair))
+                tmpObject = UmlObject(self.canvas, self._create_token((event.x, event.y), fill="white"), self.uml_pair)
+                self.uml_line_list.append(
+                    Line(
+                        self.canvas,
+                        tmpObject._topleft, tmpObject._topright,
+                        arrow=self.arrow,
+                        arrow_shape=self.arrow_shape
+                    )
+                )
+                self.uml_line_list.append(
+                    Line(
+                        self.canvas,
+                        tmpObject._bottomleft, tmpObject._bottomright,
+                        arrow=self.arrow,
+                        arrow_shape=self.arrow_shape
+                    )
+                )
+                self.uml_object_list.append(tmpObject)
             elif self.shape == 'circle':
                 self.uml_object_list.append(UmlObject(self.canvas, self._create_circle_token((event.x, event.y), fill="white"), self.uml_pair))
 
