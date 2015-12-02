@@ -1,5 +1,6 @@
 from Tkinter import *
 import math
+import tkSimpleDialog
 
 # TODO Group objects
 # TODO Ungroup objects
@@ -66,6 +67,14 @@ class UmlObject:
         self.uml_pair = uml_pair
         self.uml_pair[self.widget] = self
         self.create_ports()
+        self.object_name = "UmlObject"
+        self.name = self.canvas.create_text(0, 0, anchor="n")
+        self.show_name()
+
+    def show_name(self):
+        bound = self.canvas.bbox(self.widget)
+        self.canvas.itemconfig(self.name, text=self.object_name)
+        self.canvas.coords(self.name, ((bound[2]+bound[0])/2, bound[1]))
 
     def create_ports(self):
         bound = self.canvas.bbox(self.widget)
@@ -102,9 +111,26 @@ class UmlObject:
                 nearest_port = port
         return nearest_port
 
+    def rename(self, new_name):
+        self.object_name = new_name
+        self.show_name()
+
+
+class RenameDialog(tkSimpleDialog.Dialog):
+    def body(self, master):
+        Label(master, text="New Name: ").grid(row=0)
+        self.e = Entry(master)
+        self.e.grid(row=0, column=1)
+        return self.e
+
+    def apply(self):
+        new_name = self.e.get()
+        self.result = new_name
+
 
 class GUIMain(Frame):
     def __init__(self, master=None):
+        self.master = master
         self.uml_object_list = []
         self.uml_line_list = []
         self.uml_pair = {}
@@ -115,6 +141,7 @@ class GUIMain(Frame):
         self.arrow = NONE
         self.arrow_shape = None
         self.shape = None
+        self.e = Entry(self.master)
 
     def reset_all_button(self):
         self.select.config(relief=RAISED, background='#F0F0F0', foreground='black')
@@ -260,6 +287,7 @@ class GUIMain(Frame):
         else:
             self.canvas.move("focusPoint", delta_x, delta_y)
             self.canvas.move(self._drag_data["item"], delta_x, delta_y)
+            self.canvas.move(self.uml_pair[self._drag_data["item"]].name, delta_x, delta_y)
             self._drag_data["x"] = event.x
             self._drag_data["y"] = event.y
             for i in self.uml_line_list:
@@ -289,7 +317,8 @@ class GUIMain(Frame):
         if self.focus_object is None:
             print "Error: no object selected"
         else:
-            print self.uml_pair[self.focus_object]
+            rename = RenameDialog(self.master, title="Rename...")
+            self.uml_pair[self.focus_object].rename(new_name=rename.result)
 
     def create_widgets(self):
         self.menubar = Menu(self)
