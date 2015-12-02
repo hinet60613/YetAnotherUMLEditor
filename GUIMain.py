@@ -40,13 +40,15 @@ class Line:
         self.draw()
 
     def draw(self):
-        if hasattr(self, 'item') and type(self.item) is not None:
-            self.canvas.delete(self.item)
         self.start_port.update_coord()
         self.end_port.update_coord()
         (start_x, start_y) = self.start_port.get_coord()
         (end_x, end_y) = self.end_port.get_coord()
-        self.item = self.canvas.create_line(
+
+        if hasattr(self, 'item') and self.item is not None:
+            self.canvas.coords(self.item, (start_x, start_y, end_x, end_y))
+        else:
+            self.item = self.canvas.create_line(
                 start_x, start_y,
                 end_x, end_y,
                 arrowshape=self.arrow_shape,
