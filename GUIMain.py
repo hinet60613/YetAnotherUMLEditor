@@ -1,5 +1,6 @@
 from Tkinter import *
 import math
+import tkSimpleDialog
 
 # TODO Group objects
 # TODO Ungroup objects
@@ -40,13 +41,15 @@ class Line:
         self.draw()
 
     def draw(self):
-        if hasattr(self, 'item') and type(self.item) is not None:
-            self.canvas.delete(self.item)
         self.start_port.update_coord()
         self.end_port.update_coord()
         (start_x, start_y) = self.start_port.get_coord()
         (end_x, end_y) = self.end_port.get_coord()
-        self.item = self.canvas.create_line(
+
+        if hasattr(self, 'item') and self.item is not None:
+            self.canvas.coords(self.item, (start_x, start_y, end_x, end_y))
+        else:
+            self.item = self.canvas.create_line(
                 start_x, start_y,
                 end_x, end_y,
                 arrowshape=self.arrow_shape,
@@ -64,6 +67,14 @@ class UmlObject:
         self.uml_pair = uml_pair
         self.uml_pair[self.widget] = self
         self.create_ports()
+        self.object_name = "UmlObject"
+        self.name = self.canvas.create_text(0, 0, anchor="n")
+        self.show_name()
+
+    def show_name(self):
+        bound = self.canvas.bbox(self.widget)
+        self.canvas.itemconfig(self.name, text=self.object_name)
+        self.canvas.coords(self.name, ((bound[2]+bound[0])/2, bound[1]))
 
     def create_ports(self):
         bound = self.canvas.bbox(self.widget)
@@ -72,7 +83,11 @@ class UmlObject:
         self._bottom = Port(self, ((bound[2]+bound[0])/2, bound[3]))
         self._left = Port(self, (bound[0], (bound[1]+bound[3])/2))
         self._right = Port(self, (bound[2], (bound[1]+bound[3])/2))
-        self.focus_point = [self._center, self._top, self._bottom, self._left, self._right]
+        self._topright = Port(self, (bound[2], bound[1]+(bound[3]-bound[1])/3))
+        self._topleft = Port(self, (bound[0], bound[1]+(bound[3]-bound[1])/3))
+        self._bottomright = Port(self, (bound[2], bound[3]-(bound[3]-bound[1])/3))
+        self._bottomleft = Port(self, (bound[0], bound[3]-(bound[3]-bound[1])/3))
+        self.focus_point = [self._top, self._bottom, self._left, self._right]
 
     def update_coords(self):
         bound = self.canvas.bbox(self.widget)
@@ -81,6 +96,10 @@ class UmlObject:
         self._bottom.set_coord(((bound[2]+bound[0])/2, bound[3]))
         self._left.set_coord((bound[0], (bound[1]+bound[3])/2))
         self._right.set_coord((bound[2], (bound[1]+bound[3])/2))
+        self._topright.set_coord((bound[2], bound[1]+(bound[3]-bound[1])/3))
+        self._topleft.set_coord((bound[0], bound[1]+(bound[3]-bound[1])/3))
+        self._bottomright.set_coord((bound[2], bound[3]-(bound[3]-bound[1])/3))
+        self._bottomleft.set_coord((bound[0], bound[3]-(bound[3]-bound[1])/3))
 
     def get_nearest_port(self, coord):
         nearest_port = self._center
@@ -92,9 +111,26 @@ class UmlObject:
                 nearest_port = port
         return nearest_port
 
+    def rename(self, new_name):
+        self.object_name = new_name
+        self.show_name()
+
+
+class RenameDialog(tkSimpleDialog.Dialog):
+    def body(self, master):
+        Label(master, text="New Name: ").grid(row=0)
+        self.e = Entry(master)
+        self.e.grid(row=0, column=1)
+        return self.e
+
+    def apply(self):
+        new_name = self.e.get()
+        self.result = new_name
+
 
 class GUIMain(Frame):
     def __init__(self, master=None):
+        self.master = master
         self.uml_object_list = []
         self.uml_line_list = []
         self.uml_pair = {}
@@ -105,6 +141,7 @@ class GUIMain(Frame):
         self.arrow = NONE
         self.arrow_shape = None
         self.shape = None
+        self.e = Entry(self.master)
 
     def reset_all_button(self):
         self.select.config(relief=RAISED, background='#F0F0F0', foreground='black')
@@ -124,6 +161,7 @@ class GUIMain(Frame):
         print 'OBJECT mode'
         self.mode = 'object'
         self.shape = 'rectangle'
+        self.arrow = NONE
         self.reset_all_button()
         self.classGraph.config(relief=SUNKEN, background='black', foreground='white')
 
@@ -161,7 +199,24 @@ class GUIMain(Frame):
         self.focus_object = None
         if self.mode == 'object':
             if self.shape == 'rectangle':
-                self.uml_object_list.append(UmlObject(self.canvas, self._create_token((event.x, event.y), fill="white"), self.uml_pair))
+                tmpObject = UmlObject(self.canvas, self._create_token((event.x, event.y), fill="white"), self.uml_pair)
+                self.uml_line_list.append(
+                    Line(
+                        self.canvas,
+                        tmpObject._topleft, tmpObject._topright,
+                        arrow=self.arrow,
+                        arrow_shape=self.arrow_shape
+                    )
+                )
+                self.uml_line_list.append(
+                    Line(
+                        self.canvas,
+                        tmpObject._bottomleft, tmpObject._bottomright,
+                        arrow=self.arrow,
+                        arrow_shape=self.arrow_shape
+                    )
+                )
+                self.uml_object_list.append(tmpObject)
             elif self.shape == 'circle':
                 self.uml_object_list.append(UmlObject(self.canvas, self._create_circle_token((event.x, event.y), fill="white"), self.uml_pair))
 
@@ -232,6 +287,7 @@ class GUIMain(Frame):
         else:
             self.canvas.move("focusPoint", delta_x, delta_y)
             self.canvas.move(self._drag_data["item"], delta_x, delta_y)
+            self.canvas.move(self.uml_pair[self._drag_data["item"]].name, delta_x, delta_y)
             self._drag_data["x"] = event.x
             self._drag_data["y"] = event.y
             for i in self.uml_line_list:
@@ -261,7 +317,8 @@ class GUIMain(Frame):
         if self.focus_object is None:
             print "Error: no object selected"
         else:
-            print self.uml_pair[self.focus_object]
+            rename = RenameDialog(self.master, title="Rename...")
+            self.uml_pair[self.focus_object].rename(new_name=rename.result)
 
     def create_widgets(self):
         self.menubar = Menu(self)
